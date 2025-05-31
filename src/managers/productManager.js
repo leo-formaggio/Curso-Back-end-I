@@ -1,19 +1,21 @@
-import fs from "fs/promises"
+import { fileURLToPath } from 'url'
 import path from "path"
+import fs from "fs"
 
-class ProductManager {
-    constructor(filePath) {
-        this.filePath = path.resolve('src', 'data', filePath)
-        console.log('Caminho do arquivo:', this.filePath)
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+export default class ProductManager {
+    constructor(filename) {
+        this.path = path.join(__dirname, '..', 'data', filename)
     }
 
     async getProducts() {
         try {
-            const data = await fs.promises.readFile(this.filePath, "utf-8")
+            const data = await fs.promises.readFile(this.path, "utf-8")
             return JSON.parse(data)
         } catch (error) {
             console.error('Erro ao ler os produtos:', error)
-            throw new Error('Erro ao ler os produtos')
+            
         }
     }
 
@@ -24,13 +26,21 @@ class ProductManager {
 
     async addProduct(product) {
         const products = await this.getProducts()
-    
-        // Geração de id simples com base no maior existente
         const newId = products.length > 0 ? products[products.length - 1].id + 1 : 1
-        const newProduct = { id: newId, ...product }
+        const newProduct = {
+            id: newId,
+            title: product.title,
+            description: product.description,
+            code: product.code,
+            price: product.price,
+            status: product.status,
+            stock: product.stock,
+            category: product.category
+        }
+    
         products.push(newProduct)
     
-        await fs.writeFile(this.path, JSON.stringify(products, null, 2), 'utf-8')
+        await fs.promises.writeFile(this.path, JSON.stringify(products, null, 2), 'utf-8')
 
         return newProduct
       }
@@ -53,9 +63,7 @@ class ProductManager {
 
     if (filtered.length === products.length) return false;
 
-    await fs.writeFile(this.filePath, JSON.stringify(filtered, null, 2), "utf-8");
+    await fs.promises.writeFile(this.path, JSON.stringify(filtered, null, 2), "utf-8");
     return true;
   }
 }
-
-export default ProductManager

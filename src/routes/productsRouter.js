@@ -1,19 +1,22 @@
-import { Router } from "express"
 import  ProductManager from "../managers/productManager.js"
+import { Router } from "express"
+import path from "path"
 
 const router = Router()
+const productManager = new ProductManager(path.resolve("../data/products.json"))
 
-const productManager = new ProductManager("../data/products.json")
-
-// Middleware de validação de dados
+// Middleware data validation
 function validateProduct(req, res, next) {
     const { title, description, code, price, status, stock, category, thumbnails } = req.body
 
     if (!title || !description || !code || 
-        typeof price !== "number" || typeof status !== "boolean" || 
-        typeof stock !== "number" || !category || !Array.isArray(thumbnails)) {
+        isNaN(Number(price)) || typeof status !== "boolean" || 
+        isNaN(Number(stock)) || !category || !Array.isArray(thumbnails)) {
         return res.status(400).json({ error: "Dados inválidos ou incompletos para o produto" })
     }
+
+    req.body.price = Number(price)
+    req.body.stock = Number(stock)
     next()
 }
 
@@ -21,10 +24,20 @@ function validateProduct(req, res, next) {
 router.post("/", validateProduct, async (req, res) => {
     try {
         const newProduct = await productManager.addProduct(req.body)
-        res.status(201).json(newProduct);
+
+        //Emit event by websocket
+        const io = req.app.get('io')
+        const updatedProducts = await productManager.getProducts()
+        io.emit('productsUpdated', updatedProducts)
+
+        res.status(201).json(newProduct)
     } catch (error) {
         console.error(error)
-        res.status(500).json({ error: "Erro ao adicionar produto", details: error.message })
+        res.status(500).json({ 
+            error: "Erro ao adicionar produto", 
+            message: error.message,
+            stack: error.stack,
+        })
     }
 })
 

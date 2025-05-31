@@ -1,53 +1,58 @@
+import  ProductManager  from './managers/productManager.js'
+import productsRoutes from './routes/productsRouter.js'
+import viewRoutes from './routes/viewRouter.js'
+import { engine } from "express-handlebars"
+import { createServer } from "http"
+import { fileURLToPath } from 'url'
+import { Server } from "socket.io"
+import { dirname } from "path"
 import express from "express"
-import productsRouter from "./routes/productsRouter.js"
+import path from 'path'
 
 const app = express()
+const httpServer = createServer(app)
+const io = new Server(httpServer)
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
+// Middlewares
 app.use(express.json())
-app.use("/api/products", productsRouter)
+app.use(express.urlencoded({ extended: true }))
+app.use(express.static(path.join(__dirname, 'public')))
 
-app.listen(8080, () => {
-    console.log("Servidor rodando na porta 8080")
+//Handlebars setup
+app.engine('handlebars', engine())
+app.set('view engine', 'handlebars')
+app.set('views', path.join(__dirname, 'views'))
+
+//Export io to use in others files
+app.set('io', io)
+
+//My rote here
+app.use('/api/products', productsRoutes)
+app.use('/', viewRoutes)
+
+//Socket logic
+const productManager = new ProductManager('products.json')
+
+io.on('connection', async (socket) => {
+    console.log('Novo cliente conectado via Websocket')
+
+    //Send actual list
+    const products = await productManager.getProducts()
+    socket.emit('productsUpdated', products)
+
+    //Create new product
+    socket.on('newProduct', async (data) => {
+        console.log('Produto recebido no servidor:', data)
+        await productManager.addProduct(data)
+        const updated = await productManager.getProducts()
+        io.emit('productsUpdated', updated)
+    })
 })
 
-// // import express from "express"
-// import http from "http"
-
-// // const app = express()
-
-// const server = http.createServer((request, response) => {
-//     response.setHeader('Content-Type', 'text/html; charset=utf-8')
-//     response.end('Meu primeiro servidor!')
-// })
-
-// // app.use(express.json())
-
-// // app.use("/data/products", productsRouter)
-// // app.use("/api/carts", cartsRouter)
-
-// server.listen(8080, () => {
-//     console.log("Servidor rodando na porta 8080")
-// })
-
-// [
-    // {
-    //     "title": "Asus",
-    //     "description": "notebook",
-    //     "code": "Af15",
-    //     "price": 1190,
-    //     "status": true,
-    //     "stock": 5,
-    //     "category": "Portáteis",
-    //     "thumbnails": "img/note.png"
-    // },
-//     {
-//         "title": "Dell",
-//         "description": "notebook",
-//         "code": "Df05",
-//         "price": 1060,
-//         "status": true,
-//         "stock": 7,
-//         "category": "Portáteis",
-//         "thumbnails": "img/note.png"
-//     }
-// ]
+//Start servidor
+const PORT = 8080
+httpServer.listen(PORT, () => {
+    console.log("Servidor rodando na porta 8080")
+})

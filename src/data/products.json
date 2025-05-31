@@ -1,1 +1,32 @@
-[]
+[
+  {
+    "id": 1,
+    "title": "Asus",
+    "description": "notebook",
+    "code": "Af15",
+    "price": 1200,
+    "status": true,
+    "stock": 3,
+    "category": "portáteis"
+  },
+  {
+    "id": 2,
+    "title": "Dell",
+    "description": "notebook",
+    "code": "G15",
+    "price": 1150,
+    "status": true,
+    "stock": 4,
+    "category": "portáteis"
+  },
+  {
+    "id": 3,
+    "title": "HP",
+    "description": "notebook",
+    "code": "HP1020",
+    "price": 1360,
+    "status": true,
+    "stock": 6,
+    "category": "portáteis"
+  }
+]
