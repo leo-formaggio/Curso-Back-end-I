@@ -1,66 +1,69 @@
-import  ProductManager from "../managers/productManager.js"
-import { Router } from "express"
-import path from "path"
+import ProductManager from '../managers/productManager.js'
+import { Router } from 'express'
+import { Product } from '../models/product.js'
 
-const router = Router()
-const productManager = new ProductManager(path.resolve("../data/products.json"))
+const productsRouter = Router()
+const productManager = new ProductManager()
 
-// Middleware data validation
-function validateProduct(req, res, next) {
-    const { title, description, code, price, status, stock, category, thumbnails } = req.body
-
-    if (!title || !description || !code || 
-        isNaN(Number(price)) || typeof status !== "boolean" || 
-        isNaN(Number(stock)) || !category || !Array.isArray(thumbnails)) {
-        return res.status(400).json({ error: "Dados inválidos ou incompletos para o produto" })
-    }
-
-    req.body.price = Number(price)
-    req.body.stock = Number(stock)
-    next()
-}
-
-// POST /api/products
-router.post("/", validateProduct, async (req, res) => {
+productsRouter.get('/', async (req, res) => {
     try {
-        const newProduct = await productManager.addProduct(req.body)
+        const { limit = 10, page = 1, sort, query } = req.query
 
-        //Emit event by websocket
-        const io = req.app.get('io')
-        const updatedProducts = await productManager.getProducts()
-        io.emit('productsUpdated', updatedProducts)
+        const result = await productManager.getProducts({ limit, page, sort, query })
 
-        res.status(201).json(newProduct)
-    } catch (error) {
-        console.error(error)
-        res.status(500).json({ 
-            error: "Erro ao adicionar produto", 
-            message: error.message,
-            stack: error.stack,
+        const { docs, totalPages, prevPage, nextPage, hasPrevPage, hasNextPage, page: currentPage } = result
+
+        const baseUrl = `${req.protocol}://${req.get('host')}${req.baseUrl}`
+
+        res.json({
+            status: 'success',
+            payload: docs,
+            totalPages,
+            prevPage,
+            nextPage,
+            page,
+            hasPrevPage,
+            hasNextPage,
+            prevLink: hasPrevPage ? `${baseUrl}?page=${prevPage}` : null,
+            nextLink: hasNextPage ? `${baseUrl}?page=${nextPage}` : null
         })
+    } catch (error) {
+        console.error('Erro ao buscar produtos: ', error)
+        res.status(500).json({ status: 'error', message: 'Erro ao buscar produtos' })
     }
 })
 
-export default router
-// router.get("/home", (req, res) => {
-//     console.log("olá")
-//     res.send("Olá!")
-// })
+productsRouter.get('/:pid', async (req, res) => {
+  try {
+    let { pid } = req.params
 
-// router.get("/products.json", (req, res) => {
-//     res.status(200).send(products)
-// })
+    const products = await Product.find(pid).lean()
 
-// router.get("/products.json/:id", (req, res) => {
-//     const {id} = req.params
-//     const product = products.find(p => p.id === id)
+    if (!products) {
+      return res.status(404).json({ status: "Error", message: `Produto id: ${pid} não encontrado` })
+    }
 
-//     if (product) {
-//         res.status(200).json(product)
-//     } else {
-//         res.status(404).json({message: "Produto não encontrado"})
-//     }
-    
-// })
+    res.json({ status: "success", payload: Product })
+  } catch (error) {
+    res.status(500).json({ status: "Error", message: error.message })
+    console.error("Erro ao renderizar /products:", error)
+  }
+})
 
-// export default router
+productsRouter.post('/', async (req, res) => {
+  try {
+    const { title, price, category } = req.body
+
+    if (!title || !price) {
+      return res.status(400).json({ status: 'error', message: 'Title e price são obrigatórios' })
+    }
+
+    const newProduct = await productManager.addProduct({ title, price, category })
+    res.status(201).json({ status: 'success', payload: newProduct })
+  } catch (error) {
+    console.error(error.message)
+    // res.status(500).json({ status: 'error', message: 'Erro interno do servidor' })
+  }
+})
+
+export default productsRouter

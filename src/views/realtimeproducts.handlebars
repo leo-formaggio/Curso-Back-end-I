@@ -3,12 +3,8 @@
 
 <form id="productForm">
     <input type="text" placeholder="Title" name="title" required />
-    <input type="text" placeholder="Description" name="description" required />
-    <input type="text" placeholder="Code" name="code" required />
     <input type="number" placeholder="Price" name="price" required />
-    <input type="number" placeholder="Stock" name="stock" required />
     <input type="text" placeholder="Category" name="category" required />
-    {{!-- <input type="text" placeholder="Thumbnails (comma separated)" name="thumbnails" /> --}}
     <button type="submit">Adicionar Produto</button>
 </form>
 
@@ -28,11 +24,7 @@
             li.innerText = 
             `
             ${p.title} - 
-            ${p.description} - 
-            ${p.code} - 
-            ${p.price} - 
-            ${p.status} - 
-            ${p.stock} - 
+            ${p.price} -  
             ${p.category}
             `
             productList.appendChild(li)
@@ -44,11 +36,7 @@
         const formData = new FormData(form)
         const product = {
             title: formData.get('title'),
-            description: formData.get('description'),
-            code: formData.get('code'),
             price: parseFloat(formData.get('price')),
-            status: true,
-            stock: parseInt(formData.get('stock')),
             category: formData.get('category')
         }
         socket.emit('newProduct', product)

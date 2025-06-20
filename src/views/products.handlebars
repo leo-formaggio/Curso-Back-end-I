@@ -1,0 +1,58 @@
+<h1>Catálogo de Produtos</h1>
+
+<div style="display: flex; flex-wrap: wrap; gap: 40px;">
+  {{#each products}}
+    <div style="border: 1px solid #ccc; padding: 10px; width: 300px;">
+      <h3>{{this.title}}</h3>
+      <p>Preço: R$ {{this.price}}</p>
+      <p>Categoria: {{this.category}}</p>
+      <button class="add-to-cart" data-id="{{this._id}}">Adicionar ao carrinho</button>
+    </div>
+  {{/each}}
+</div>
+
+<hr />
+
+<div>
+  {{#if pagination.hasPrevPage}}
+    <a href="{{pagination.prevLink}}">⬅ Página anterior</a>
+  {{/if}}
+
+  <span>Página {{pagination.currentPage}} de {{pagination.totalPages}}</span>
+
+  {{#if pagination.hasNextPage}}
+    <a href="{{pagination.nextLink}}">Próxima página ➡</a>
+  {{/if}}
+  <br><a href="/cart/:cid">Ir para o carrinho</a>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".add-to-cart").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const productId = btn.getAttribute("data-id")
+
+        try {
+          const response = await fetch(`/api/cart/products/${productId}`, {
+            method: "POST",
+            credentials:"same-origin",
+            headers: {
+              "Content-Type": "application/json"
+            }
+          })
+
+          console.log("Resposta bruta:", response)
+          const result = await response.json()
+
+          if (result.status === "success") {
+            alert("Produto adicionado ao carrinho!")
+          } else {
+            alert("Erro ao adicionar ao carrinho.")
+          }
+        } catch (error) {
+          console.error("Erro na requisição:", error)
+        }
+      })
+    })
+  })
+</script>
